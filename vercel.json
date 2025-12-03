@@ -5,14 +5,3 @@
     }
   }
 }
-```
-
----
-
-## 🧪 또는 간단하게 테스트
-
-일단 사이트가 작동하는지 보려면:
-
-**이 URL로 직접 API 접속해보세요:**
-```
-https://mahjong-fortune-teller-15o3qg5u8-sonus-projects-1de54fdd.vercel.app/api/fortune
