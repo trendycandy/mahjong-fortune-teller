@@ -93,8 +93,7 @@ module.exports = async (req, res) => {
                 temperature: 0.9,
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 1000,
-                responseModalities: ["TEXT"]
+                maxOutputTokens: 1000
             }
         };
         
@@ -147,10 +146,12 @@ module.exports = async (req, res) => {
         });
         
         if (!apiResponse.candidates || apiResponse.candidates.length === 0) {
+            console.error('Candidates 없음:', JSON.stringify(apiResponse, null, 2));
             throw new Error('API 응답에 candidates가 없습니다');
         }
         
         if (!apiResponse.candidates[0].content || !apiResponse.candidates[0].content.parts || apiResponse.candidates[0].content.parts.length === 0) {
+            console.error('Parts 없음:', JSON.stringify(apiResponse.candidates[0], null, 2));
             throw new Error('API 응답에 parts가 없습니다');
         }
         
