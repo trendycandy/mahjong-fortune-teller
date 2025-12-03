@@ -19,6 +19,12 @@ module.exports = async (req, res) => {
         const today = new Date();
         const dateString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
         
+        // 쿼리 파라미터에서 userId 가져오기
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        const userId = url.searchParams.get('userId') || 'anonymous';
+        
+        console.log('사용자 ID:', userId);
+        
         const tiles = [
             '1만', '2만', '3만', '4만', '5만', '6만', '7만', '8만', '9만',
             '1삭', '2삭', '3삭', '4삭', '5삭', '6삭', '7삭', '8삭', '9삭',
@@ -27,12 +33,16 @@ module.exports = async (req, res) => {
         ];
         
         const yakus = [
-            '리치', '탕야오', '핑후', '이페코', '삼색동순', '일기통관',
+            '리치', '탕야오', '멘젠쯔모', '핑후', '역패-자풍', '역패-장풍', '역패-백', '역패-발', '역패-중', '이페코', 
+            '삼색동순', '일기통관', '찬타', '준찬타', '더블리치', '창깡', '하저로어', '해저모월', '영상개화', '량페코',
             '혼일색', '청일색', '또이또이', '산안커', '삼색동각',
-            '치또이츠', '소삼원', '혼노두', '청노두', '산깡쯔', '역패'
+            '치또이츠', '소삼원', '혼노두', '청노두', '산깡쯔',
         ];
         
-        const seed = hashCode(dateString);
+        // 날짜 + 사용자 ID로 시드 생성
+        const seedString = `${dateString}-${userId}`;
+        const seed = hashCode(seedString);
+        
         const luckyTile = tiles[Math.abs(seed) % tiles.length];
         const luckyYaku = yakus[Math.abs(seed * 2) % yakus.length];
         
@@ -77,8 +87,6 @@ module.exports = async (req, res) => {
         
         const apiData = JSON.stringify(requestBody);
         
-        console.log('=== Gemini API 호출 시작 ===');
-        
         const apiResponse = await new Promise((resolve, reject) => {
             const options = {
                 hostname: 'generativelanguage.googleapis.com',
@@ -99,30 +107,24 @@ module.exports = async (req, res) => {
                 });
                 
                 apiRes.on('end', () => {
-                    console.log('API 응답 상태:', apiRes.statusCode);
-                    
                     if (apiRes.statusCode === 200) {
                         try {
                             const parsed = JSON.parse(data);
                             resolve(parsed);
                         } catch (e) {
-                            console.error('JSON 파싱 에러:', e);
                             reject(new Error(`JSON 파싱 실패: ${e.message}`));
                         }
                     } else {
-                        console.error('API 에러 응답:', data);
                         reject(new Error(`API 오류 ${apiRes.statusCode}: ${data}`));
                     }
                 });
             });
             
             apiReq.on('error', (e) => {
-                console.error('요청 에러:', e);
                 reject(e);
             });
             
             apiReq.on('timeout', () => {
-                console.error('API 타임아웃');
                 apiReq.destroy();
                 reject(new Error('API 타임아웃'));
             });
@@ -132,17 +134,14 @@ module.exports = async (req, res) => {
         });
         
         if (!apiResponse.candidates || apiResponse.candidates.length === 0) {
-            console.error('Candidates 없음:', apiResponse);
             throw new Error('API 응답에 candidates가 없습니다');
         }
         
         if (!apiResponse.candidates[0].content || !apiResponse.candidates[0].content.parts || apiResponse.candidates[0].content.parts.length === 0) {
-            console.error('Parts 없음. Content:', apiResponse.candidates[0].content);
             throw new Error('API 응답에 parts가 없습니다');
         }
         
         const generatedText = apiResponse.candidates[0].content.parts[0].text;
-        console.log('생성된 텍스트:', generatedText);
         
         let jsonText = generatedText.trim();
         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -157,9 +156,6 @@ module.exports = async (req, res) => {
             date: dateString
         };
         
-        console.log('=== 최종 결과 ===');
-        console.log(result);
-        
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
@@ -170,8 +166,7 @@ module.exports = async (req, res) => {
         return res.status(200).json(result);
         
     } catch (error) {
-        console.error('=== 운세 생성 오류 ===');
-        console.error('에러:', error.message);
+        console.error('운세 생성 오류:', error.message);
         return res.status(500).json({ 
             error: '운세를 생성하는데 실패했습니다.',
             details: error.message
