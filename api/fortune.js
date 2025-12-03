@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 module.exports = async (req, res) => {
     // CORS 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,8 +12,7 @@ module.exports = async (req, res) => {
     
     if (!GEMINI_API_KEY) {
         return res.status(500).json({ 
-            error: 'API 키가 설정되지 않았습니다.',
-            message: 'Vercel Settings에서 GEMINI_API_KEY를 추가해주세요.'
+            error: 'API 키가 설정되지 않았습니다.'
         });
     }
     
@@ -62,31 +59,55 @@ module.exports = async (req, res) => {
   "tip": "팁 내용"
 }`;
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-            {
+        // https 모듈 사용 (fetch 대신)
+        const https = require('https');
+        
+        const apiData = JSON.stringify({
+            contents: [{
+                parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+                temperature: 0.9,
+                maxOutputTokens: 200,
+            }
+        });
+        
+        const apiResponse = await new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'generativelanguage.googleapis.com',
+                path: `/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.9,
-                        maxOutputTokens: 200,
+                    'Content-Length': Buffer.byteLength(apiData)
+                }
+            };
+            
+            const apiReq = https.request(options, (apiRes) => {
+                let data = '';
+                
+                apiRes.on('data', (chunk) => {
+                    data += chunk;
+                });
+                
+                apiRes.on('end', () => {
+                    if (apiRes.statusCode === 200) {
+                        resolve(JSON.parse(data));
+                    } else {
+                        reject(new Error(`API 오류: ${apiRes.statusCode}`));
                     }
-                })
-            }
-        );
+                });
+            });
+            
+            apiReq.on('error', (e) => {
+                reject(e);
+            });
+            
+            apiReq.write(apiData);
+            apiReq.end();
+        });
         
-        if (!response.ok) {
-            throw new Error(`Gemini API 오류: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const generatedText = data.candidates[0].content.parts[0].text;
+        const generatedText = apiResponse.candidates[0].content.parts[0].text;
         
         let jsonText = generatedText.trim();
         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
