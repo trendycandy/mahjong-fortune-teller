@@ -123,6 +123,7 @@ function displayFortune(data) {
     document.getElementById('tip').textContent = data.tip;
 }
 
+
 // 공유 기능
 function shareFortune() {
     const fortuneData = getTodaysCachedFortune();
@@ -148,8 +149,8 @@ function shareFortune() {
     if (navigator.share) {
         navigator.share({
             title: '🎴 오늘의 마작 운세',
-            text: shareText,
-            url: window.location.href
+            text: shareText
+            // url 제거!
         }).catch(err => {
             console.log('공유 취소:', err);
         });
