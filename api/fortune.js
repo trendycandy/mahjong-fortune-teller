@@ -1,5 +1,4 @@
 module.exports = async (req, res) => {
-    // CORS 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Content-Type', 'application/json');
@@ -59,7 +58,6 @@ module.exports = async (req, res) => {
   "tip": "팁 내용"
 }`;
 
-        // https 모듈 사용 (fetch 대신)
         const https = require('https');
         
         const apiData = JSON.stringify({
@@ -75,7 +73,7 @@ module.exports = async (req, res) => {
         const apiResponse = await new Promise((resolve, reject) => {
             const options = {
                 hostname: 'generativelanguage.googleapis.com',
-                path: `/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+                path: `/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -91,15 +89,23 @@ module.exports = async (req, res) => {
                 });
                 
                 apiRes.on('end', () => {
+                    console.log('Gemini API 응답 상태:', apiRes.statusCode);
+                    console.log('Gemini API 응답 데이터:', data.substring(0, 200));
+                    
                     if (apiRes.statusCode === 200) {
-                        resolve(JSON.parse(data));
+                        try {
+                            resolve(JSON.parse(data));
+                        } catch (e) {
+                            reject(new Error(`JSON 파싱 실패: ${e.message}`));
+                        }
                     } else {
-                        reject(new Error(`API 오류: ${apiRes.statusCode}`));
+                        reject(new Error(`API 오류: ${apiRes.statusCode} - ${data}`));
                     }
                 });
             });
             
             apiReq.on('error', (e) => {
+                console.error('API 요청 에러:', e);
                 reject(e);
             });
             
@@ -135,7 +141,8 @@ module.exports = async (req, res) => {
         console.error('운세 생성 오류:', error);
         return res.status(500).json({ 
             error: '운세를 생성하는데 실패했습니다.',
-            details: error.message 
+            details: error.message,
+            stack: error.stack
         });
     }
 };
