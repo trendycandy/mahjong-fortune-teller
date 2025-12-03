@@ -124,6 +124,7 @@ function displayFortune(data) {
 }
 
 
+
 // 공유 기능
 function shareFortune() {
     const fortuneData = getTodaysCachedFortune();
@@ -145,28 +146,35 @@ function shareFortune() {
 
 #마작운세 #마작`;
     
-    // Web Share API 지원 확인
-    if (navigator.share) {
-        navigator.share({
-            title: '🎴 오늘의 마작 운세',
-            text: shareText
-            // url 제거!
-        }).catch(err => {
-            console.log('공유 취소:', err);
-        });
-    } else {
-        // 클립보드에 복사
+    // 클립보드에 복사 (디폴트)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(shareText).then(() => {
             alert('운세가 클립보드에 복사되었습니다! 📋\n\n원하는 곳에 붙여넣기 하세요.');
         }).catch(() => {
-            // 폴백: 텍스트 영역 생성
-            const textArea = document.createElement('textarea');
-            textArea.value = shareText;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            alert('운세가 클립보드에 복사되었습니다! 📋');
+            // 실패 시 폴백
+            fallbackCopy(shareText);
         });
+    } else {
+        // 구형 브라우저 폴백
+        fallbackCopy(shareText);
     }
+}
+
+// 폴백 복사 함수
+function fallbackCopy(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    
+    try {
+        document.execCommand('copy');
+        alert('운세가 클립보드에 복사되었습니다! 📋');
+    } catch (err) {
+        alert('복사에 실패했습니다. 수동으로 복사해주세요.');
+    }
+    
+    document.body.removeChild(textArea);
 }
