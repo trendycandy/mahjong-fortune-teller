@@ -1,9 +1,11 @@
 {
   "name": "mahjong-fortune",
   "version": "1.0.0",
-  "type": "module",
   "description": "매일 다른 마작 운세를 알려주는 웹사이트",
   "main": "index.html",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "dev": "vercel dev",
     "build": "vercel build"
