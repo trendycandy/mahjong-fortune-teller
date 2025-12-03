@@ -70,7 +70,8 @@ module.exports = async (req, res) => {
                 temperature: 0.9,
                 topK: 40,
                 topP: 0.95,
-                maxOutputTokens: 200,
+                maxOutputTokens: 1000,
+                responseModalities: ["TEXT"]
             }
         };
         
@@ -99,12 +100,10 @@ module.exports = async (req, res) => {
                 
                 apiRes.on('end', () => {
                     console.log('API 응답 상태:', apiRes.statusCode);
-                    console.log('API 응답 전체 (처음 500자):', data.substring(0, 500));
                     
                     if (apiRes.statusCode === 200) {
                         try {
                             const parsed = JSON.parse(data);
-                            console.log('파싱된 응답:', JSON.stringify(parsed, null, 2));
                             resolve(parsed);
                         } catch (e) {
                             console.error('JSON 파싱 에러:', e);
@@ -132,31 +131,15 @@ module.exports = async (req, res) => {
             apiReq.end();
         });
         
-        console.log('=== API Response 구조 확인 ===');
-        console.log('전체 응답:', JSON.stringify(apiResponse, null, 2));
-        
-        // 안전한 체크
         if (!apiResponse.candidates || apiResponse.candidates.length === 0) {
-            console.error('❌ Candidates 없음:', apiResponse);
+            console.error('Candidates 없음:', apiResponse);
             throw new Error('API 응답에 candidates가 없습니다');
         }
         
-        console.log('✅ Candidates 있음, 개수:', apiResponse.candidates.length);
-        console.log('첫 번째 candidate:', JSON.stringify(apiResponse.candidates[0], null, 2));
-        
-        if (!apiResponse.candidates[0].content) {
-            console.error('❌ Content 없음:', apiResponse.candidates[0]);
-            throw new Error('API 응답에 content가 없습니다');
-        }
-        
-        console.log('✅ Content 있음');
-        
-        if (!apiResponse.candidates[0].content.parts || apiResponse.candidates[0].content.parts.length === 0) {
-            console.error('❌ Parts 없음:', apiResponse.candidates[0].content);
+        if (!apiResponse.candidates[0].content || !apiResponse.candidates[0].content.parts || apiResponse.candidates[0].content.parts.length === 0) {
+            console.error('Parts 없음. Content:', apiResponse.candidates[0].content);
             throw new Error('API 응답에 parts가 없습니다');
         }
-        
-        console.log('✅ Parts 있음, 개수:', apiResponse.candidates[0].content.parts.length);
         
         const generatedText = apiResponse.candidates[0].content.parts[0].text;
         console.log('생성된 텍스트:', generatedText);
@@ -164,10 +147,7 @@ module.exports = async (req, res) => {
         let jsonText = generatedText.trim();
         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
-        console.log('정제된 JSON 텍스트:', jsonText);
-        
         const generated = JSON.parse(jsonText);
-        console.log('파싱된 JSON:', generated);
         
         const result = {
             fortune: generated.fortune,
@@ -191,8 +171,7 @@ module.exports = async (req, res) => {
         
     } catch (error) {
         console.error('=== 운세 생성 오류 ===');
-        console.error('에러 메시지:', error.message);
-        console.error('에러 스택:', error.stack);
+        console.error('에러:', error.message);
         return res.status(500).json({ 
             error: '운세를 생성하는데 실패했습니다.',
             details: error.message
