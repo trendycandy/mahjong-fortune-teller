@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎴 오늘의 마작 운세</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎴 오늘의 마작 운세</h1>
+            <p class="subtitle">매일 접속하여 오늘의 마작 운을 확인하세요</p>
+            <p class="date" id="currentDate"></p>
+        </header>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>운세를 불러오는 중...</p>
+        </div>
+
+        <div id="fortune-content" class="fortune-content" style="display: none;">
+            <div class="fortune-card main-fortune">
+                <div class="card-icon">💬</div>
+                <h2>오늘의 운세</h2>
+                <p id="fortuneText" class="fortune-text"></p>
+            </div>
+
+            <div class="fortune-grid">
+                <div class="fortune-card">
+                    <div class="card-icon">🀄</div>
+                    <h3>행운의 패</h3>
+                    <p id="luckyTile" class="highlight"></p>
+                </div>
+
+                <div class="fortune-card">
+                    <div class="card-icon">🎯</div>
+                    <h3>행운의 역</h3>
+                    <p id="luckyYaku" class="highlight"></p>
+                </div>
+            </div>
+
+            <div class="fortune-card">
+                <div class="card-icon">💡</div>
+                <h2>오늘의 팁</h2>
+                <p id="tip" class="tip-text"></p>
+            </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+            <p>⚠️ 운세를 불러오는데 실패했습니다.</p>
+            <button onclick="loadFortune()">다시 시도</button>
+        </div>
+
+        <footer>
+            <button class="share-btn" onclick="shareFortune()">📤 운세 공유하기</button>
+            <p class="footer-text">매일 자정에 새로운 운세가 업데이트됩니다</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

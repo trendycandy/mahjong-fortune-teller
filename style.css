@@ -1,0 +1,221 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #1e5631 0%, #2d7a4a 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    color: white;
+    margin-bottom: 40px;
+    padding: 20px;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.subtitle {
+    font-size: 1.1em;
+    opacity: 0.9;
+    margin-bottom: 15px;
+}
+
+.date {
+    font-size: 1.2em;
+    font-weight: bold;
+    background: rgba(255,255,255,0.2);
+    padding: 10px 20px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+.loading {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #2d7a4a;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fortune-content {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fortune-card {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.fortune-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+}
+
+.fortune-card.main-fortune {
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    border: 3px solid #2d7a4a;
+}
+
+.card-icon {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+}
+
+.fortune-card h2 {
+    color: #2d7a4a;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+}
+
+.fortune-card h3 {
+    color: #2d7a4a;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+}
+
+.fortune-text {
+    font-size: 1.3em;
+    line-height: 1.8;
+    color: #333;
+    font-weight: 500;
+}
+
+.fortune-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.highlight {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #c41e3a;
+    margin-top: 10px;
+}
+
+.tip-text {
+    font-size: 1.1em;
+    line-height: 1.6;
+    color: #555;
+}
+
+.error {
+    text-align: center;
+    padding: 40px;
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 20px;
+    color: #856404;
+}
+
+.error button {
+    margin-top: 20px;
+    padding: 10px 30px;
+    background: #ffc107;
+    border: none;
+    border-radius: 10px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.error button:hover {
+    background: #e0a800;
+}
+
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+}
+
+.share-btn {
+    background: white;
+    color: #2d7a4a;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.share-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.footer-text {
+    color: white;
+    opacity: 0.8;
+    font-size: 0.9em;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2em;
+    }
+
+    .fortune-card {
+        padding: 20px;
+    }
+
+    .fortune-text {
+        font-size: 1.1em;
+    }
+
+    .fortune-grid {
+        grid-template-columns: 1fr;
+    }
+}
