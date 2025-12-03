@@ -2,8 +2,7 @@
 
 매일 다른 마작 운세를 AI가 생성해주는 웹사이트를 만들 수 있는 코드입니다.
 필요조건)
-GEMINI API 
-Versel 계정
+GEMINI API, Versel 계정
 
 api key 각자 뽑으시고 versel 에서 프로젝트 만들어서 deploy 하시면 됩니다.
 
