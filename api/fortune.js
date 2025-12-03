@@ -60,25 +60,34 @@ module.exports = async (req, res) => {
 
         const https = require('https');
         
-        const apiData = JSON.stringify({
+        const requestBody = {
             contents: [{
-                parts: [{ text: prompt }]
+                parts: [{ 
+                    text: prompt 
+                }]
             }],
             generationConfig: {
                 temperature: 0.9,
+                topK: 40,
+                topP: 0.95,
                 maxOutputTokens: 200,
             }
-        });
+        };
+        
+        const apiData = JSON.stringify(requestBody);
+        
+        console.log('API 호출 시작...');
         
         const apiResponse = await new Promise((resolve, reject) => {
             const options = {
                 hostname: 'generativelanguage.googleapis.com',
-                path: `/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                path: `/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(apiData)
-                }
+                },
+                timeout: 30000
             };
             
             const apiReq = https.request(options, (apiRes) => {
@@ -89,31 +98,46 @@ module.exports = async (req, res) => {
                 });
                 
                 apiRes.on('end', () => {
-                    console.log('Gemini API 응답 상태:', apiRes.statusCode);
-                    console.log('Gemini API 응답 데이터:', data.substring(0, 200));
+                    console.log('API 응답 상태:', apiRes.statusCode);
+                    console.log('API 응답 일부:', data.substring(0, 300));
                     
                     if (apiRes.statusCode === 200) {
                         try {
-                            resolve(JSON.parse(data));
+                            const parsed = JSON.parse(data);
+                            resolve(parsed);
                         } catch (e) {
+                            console.error('JSON 파싱 실패:', e.message);
                             reject(new Error(`JSON 파싱 실패: ${e.message}`));
                         }
                     } else {
-                        reject(new Error(`API 오류: ${apiRes.statusCode} - ${data}`));
+                        console.error('API 에러 응답:', data);
+                        reject(new Error(`API 오류 ${apiRes.statusCode}: ${data}`));
                     }
                 });
             });
             
             apiReq.on('error', (e) => {
-                console.error('API 요청 에러:', e);
+                console.error('요청 에러:', e);
                 reject(e);
+            });
+            
+            apiReq.on('timeout', () => {
+                apiReq.destroy();
+                reject(new Error('API 타임아웃'));
             });
             
             apiReq.write(apiData);
             apiReq.end();
         });
         
+        console.log('API 응답 받음');
+        
+        if (!apiResponse.candidates || !apiResponse.candidates[0]) {
+            throw new Error('API 응답 형식 오류');
+        }
+        
         const generatedText = apiResponse.candidates[0].content.parts[0].text;
+        console.log('생성된 텍스트:', generatedText.substring(0, 100));
         
         let jsonText = generatedText.trim();
         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -135,14 +159,15 @@ module.exports = async (req, res) => {
         
         res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}`);
         
+        console.log('운세 생성 성공');
         return res.status(200).json(result);
         
     } catch (error) {
-        console.error('운세 생성 오류:', error);
+        console.error('운세 생성 오류:', error.message);
+        console.error('스택:', error.stack);
         return res.status(500).json({ 
             error: '운세를 생성하는데 실패했습니다.',
-            details: error.message,
-            stack: error.stack
+            details: error.message
         });
     }
 };
