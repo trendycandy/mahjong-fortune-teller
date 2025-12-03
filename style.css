@@ -219,3 +219,21 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+/* 재미로만 봐주세요 */
+.notice {
+    color: #ffd700;
+    font-size: 0.95em;
+    font-weight: 500;
+    margin: 10px 0;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* 제작자 정보 */
+.creator {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85em;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
