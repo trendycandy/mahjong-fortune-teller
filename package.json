@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "매일 다른 마작 운세를 알려주는 웹사이트",
   "main": "index.html",
-  "engines": {
-    "node": "18.x"
-  },
+  "engines": { "node": "24.x" }
   "scripts": {
     "dev": "vercel dev",
     "build": "vercel build"
