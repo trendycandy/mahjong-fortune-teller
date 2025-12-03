@@ -1,43 +1,130 @@
-// 간단한 테스트 버전
-export default async function handler(req, res) {
+const fetch = require('node-fetch');
+
+module.exports = async (req, res) => {
     // CORS 설정
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Content-Type', 'application/json');
     
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
     
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    
+    if (!GEMINI_API_KEY) {
+        return res.status(500).json({ 
+            error: 'API 키가 설정되지 않았습니다.',
+            message: 'Vercel Settings에서 GEMINI_API_KEY를 추가해주세요.'
+        });
+    }
+    
     try {
-        // API 키 확인
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        
-        if (!GEMINI_API_KEY) {
-            return res.status(200).json({ 
-                error: 'API 키가 설정되지 않았습니다.',
-                debug: 'Environment Variables에 GEMINI_API_KEY를 추가해주세요.'
-            });
-        }
-        
-        // 테스트 응답 (우선 AI 없이)
         const today = new Date();
         const dateString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
         
-        const testResponse = {
-            fortune: "오늘은 대담하게 리치를 걸어보세요. 흐름이 좋은 날이에요!",
-            luckyTile: "5만",
-            luckyYaku: "리치",
-            tip: "상대의 버림패를 잘 관찰하면 승기가 보여요.",
-            date: dateString,
-            status: 'API 키 확인됨 - AI 생성 준비 완료'
+        const tiles = [
+            '1만', '2만', '3만', '4만', '5만', '6만', '7만', '8만', '9만',
+            '1삭', '2삭', '3삭', '4삭', '5삭', '6삭', '7삭', '8삭', '9삭',
+            '1통', '2통', '3통', '4통', '5통', '6통', '7통', '8통', '9통',
+            '동', '남', '서', '북', '백', '발', '중'
+        ];
+        
+        const yakus = [
+            '리치', '탕야오', '핑후', '이페코', '삼색동순', '일기통관',
+            '혼일색', '청일색', '또이또이', '산안커', '삼색동각',
+            '치또이츠', '소삼원', '혼노두', '청노두', '산깡쯔', '역패'
+        ];
+        
+        const seed = hashCode(dateString);
+        const luckyTile = tiles[Math.abs(seed) % tiles.length];
+        const luckyYaku = yakus[Math.abs(seed * 2) % yakus.length];
+        
+        const prompt = `당신은 마작 운세 전문가입니다.
+
+오늘 날짜: ${dateString}
+행운의 패: ${luckyTile}
+행운의 역: ${luckyYaku}
+
+다음 두 가지를 생성해주세요:
+
+1. 오늘의 마작 운세 (30-50자):
+   - 친근한 ~해요 체
+   - 구체적인 마작 플레이 조언
+   - 긍정적이고 격려하는 톤
+
+2. 오늘의 팁 (20-40자):
+   - 실용적인 마작 플레이 조언
+
+반드시 JSON 형식으로만 출력하세요:
+{
+  "fortune": "운세 내용",
+  "tip": "팁 내용"
+}`;
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.9,
+                        maxOutputTokens: 200,
+                    }
+                })
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`Gemini API 오류: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const generatedText = data.candidates[0].content.parts[0].text;
+        
+        let jsonText = generatedText.trim();
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        const generated = JSON.parse(jsonText);
+        
+        const result = {
+            fortune: generated.fortune,
+            luckyTile: luckyTile,
+            luckyYaku: luckyYaku,
+            tip: generated.tip,
+            date: dateString
         };
         
-        return res.status(200).json(testResponse);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const cacheSeconds = Math.floor((tomorrow - today) / 1000);
+        
+        res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}`);
+        
+        return res.status(200).json(result);
         
     } catch (error) {
-        return res.status(200).json({ 
-            error: error.message,
-            stack: error.stack
+        console.error('운세 생성 오류:', error);
+        return res.status(500).json({ 
+            error: '운세를 생성하는데 실패했습니다.',
+            details: error.message 
         });
     }
+};
+
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return hash;
 }
