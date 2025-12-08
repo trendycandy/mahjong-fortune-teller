@@ -143,19 +143,54 @@ module.exports = async (req, res) => {
             throw new Error(`모든 모델 시도 실패. (필터링되거나 오류 발생). 마지막 에러: ${lastError?.message}`);
         }
 
-        const generatedText = apiResponse.candidates[0].content.parts[0].text;
-        let jsonText = generatedText.trim();
-        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        // ... (위쪽 코드는 동일)
 
-        const generated = JSON.parse(jsonText);
+        // [수정됨] 응답 추출 및 정제 로직 강화
+        const generatedText = apiResponse.candidates[0].content.parts[0].text;
+        
+        console.log(`🔍 원본 응답(${apiResponse.modelVersion || 'unknown'}):`, generatedText); // 디버깅용 로그
+
+        let jsonText = generatedText;
+
+        // 1. JSON 코드 블록 마크다운 제거
+        jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '');
+
+        // 2. 가장 확실한 방법: 첫 번째 '{'와 마지막 '}' 사이만 추출
+        const firstOpen = jsonText.indexOf('{');
+        const lastClose = jsonText.lastIndexOf('}');
+
+        if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+            jsonText = jsonText.substring(firstOpen, lastClose + 1);
+        } else {
+            // 중괄호를 못 찾았으면 에러 처리
+            throw new Error('AI 응답에서 JSON 객체({ ... })를 찾을 수 없습니다.');
+        }
+
+        // 3. 혹시 모를 줄바꿈/공백 제거 후 파싱
+        let generated;
+        try {
+            generated = JSON.parse(jsonText);
+        } catch (parseError) {
+            console.error('JSON 파싱 실패 원본:', jsonText);
+            
+            // 4. (비상용) 아주 드물게 따옴표가 꼬인 경우 복구 시도 (Control Character 제거)
+            try {
+                const cleaned = jsonText.replace(/[\u0000-\u001F]+/g, " "); 
+                generated = JSON.parse(cleaned);
+            } catch (retryError) {
+                throw new Error(`JSON 형식이 올바르지 않습니다: ${parseError.message}`);
+            }
+        }
 
         const result = {
-            fortune: generated.fortune,
+            fortune: generated.fortune || "운세를 불러오는 중 별들이 잠시 길을 잃었어요.", // 방어 코드
             luckyTile: luckyTile,
             luckyYaku: luckyYaku,
-            tip: generated.tip,
+            tip: generated.tip || "잠시 후 다시 시도해보세요.",
             date: dateString
         };
+
+        // ... (아래쪽 캐싱 및 res.json 코드는 동일)
 
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
