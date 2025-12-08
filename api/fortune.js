@@ -1,26 +1,16 @@
 const https = require('https');
 
-// 1. 사용 가능한 모든 "텍스트 생성 모델"을 총동원한 리스트
-// 전략: 최신 2.5 -> 최신 Lite -> 구버전 2.0 -> 구버전 Lite -> 별칭(Latest) -> 오픈모델(Gemma) -> 고성능(Pro)
+// 모델 리스트 (그대로 유지)
 const MODEL_LIST = [
-    // [1군] 최신 2.5 시리즈 (가장 빠르고 똑똑함)
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite', 
-    
-    // [2군] 2.0 시리즈 (2.5와 쿼터가 분리되어 있을 가능성 높음)
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite-preview-02-05',
     'gemini-2.0-flash-001', 
-    
-    // [3군] 별칭 모델 (구글이 알아서 최신 버전 연결, 비상용)
     'gemini-flash-latest',       
     'gemini-flash-lite-latest',
-    
-    // [4군] Gemma 시리즈 (Gemini와 아예 다른 계열이라 쿼터 별도일 확률 매우 높음)
     'gemma-3-27b-it',
     'gemma-3-12b-it',
-    
-    // [5군] Pro 시리즈 (속도는 조금 느리지만 성능 최상, 최후의 보루)
     'gemini-2.5-pro',
     'gemini-pro-latest',
     'gemini-2.0-pro-exp-02-05'
@@ -50,7 +40,6 @@ module.exports = async (req, res) => {
 
         console.log('사용자 ID:', userId);
 
-        // 마작 데이터
         const tiles = [
             '1만', '2만', '3만', '4만', '5만', '6만', '7만', '8만', '9만',
             '1삭', '2삭', '3삭', '4삭', '5삭', '6삭', '7삭', '8삭', '9삭',
@@ -95,9 +84,15 @@ module.exports = async (req, res) => {
   "tip": "팁 내용"
 }`;
 
-        // API 요청 설정
+        // [핵심 변경 1] 안전 설정 추가 (차단 방지)
         const requestBody = {
             contents: [{ parts: [{ text: prompt }] }],
+            safetySettings: [
+                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+            ],
             generationConfig: {
                 temperature: 0.9,
                 topK: 40,
@@ -110,41 +105,46 @@ module.exports = async (req, res) => {
         let apiResponse = null;
         let lastError = null;
 
-        // --- 모델 폴백(Fallback) 로직 시작 ---
         for (const modelName of MODEL_LIST) {
             try {
-                // 모델명에 'models/'가 붙어있을 수도, 아닐 수도 있으니 안전하게 제거 후 사용
                 const cleanModelName = modelName.replace('models/', '');
                 console.log(`🤖 시도 중: ${cleanModelName}...`);
 
-                apiResponse = await callGeminiAPI(cleanModelName, GEMINI_API_KEY, apiData);
+                const tempResponse = await callGeminiAPI(cleanModelName, GEMINI_API_KEY, apiData);
                 
+                // [핵심 변경 2] 응답 검증을 반복문 안으로 이동
+                // parts가 없으면(안전 필터 차단 등) 성공으로 치지 않고 다음 모델로 넘어감
+                if (!tempResponse.candidates || 
+                    tempResponse.candidates.length === 0 || 
+                    !tempResponse.candidates[0].content || 
+                    !tempResponse.candidates[0].content.parts || 
+                    tempResponse.candidates[0].content.parts.length === 0) {
+                    
+                    console.warn(`⚠️ 필터링됨 (${cleanModelName}): 응답 내용 없음. 다음 모델 시도.`);
+                    // finishReason이 있다면 로그에 출력해봄 (예: SAFETY)
+                    if (tempResponse.candidates && tempResponse.candidates[0] && tempResponse.candidates[0].finishReason) {
+                        console.warn(`   -> 사유: ${tempResponse.candidates[0].finishReason}`);
+                    }
+                    continue; // 다음 모델로!
+                }
+
+                // 검증 통과하면 채택
+                apiResponse = tempResponse;
                 console.log(`✅ 성공! (${cleanModelName} 모델 사용)`);
-                break; // 성공하면 탈출!
+                break; 
 
             } catch (error) {
-                // 에러 로그만 찍고 멈추지 않고 다음 모델로 넘어감
-                console.warn(`⚠️ 실패 (${modelName}): ${error.message}`);
+                console.warn(`⚠️ 오류 (${modelName}): ${error.message}`);
                 lastError = error;
             }
         }
-        // --- 모델 폴백 로직 끝 ---
 
         if (!apiResponse) {
-            throw new Error(`모든 모델(${MODEL_LIST.length}개) 시도 실패. 마지막 에러: ${lastError?.message}`);
-        }
-
-        // 응답 검증 및 파싱
-        if (!apiResponse.candidates || apiResponse.candidates.length === 0) {
-            throw new Error('API 응답에 candidates가 없습니다: ' + JSON.stringify(apiResponse));
-        }
-        if (!apiResponse.candidates[0].content?.parts?.[0]) {
-            throw new Error('API 응답에 parts가 없습니다.');
+            throw new Error(`모든 모델 시도 실패. (필터링되거나 오류 발생). 마지막 에러: ${lastError?.message}`);
         }
 
         const generatedText = apiResponse.candidates[0].content.parts[0].text;
         let jsonText = generatedText.trim();
-        // 마크다운 코드 블록 제거
         jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
         const generated = JSON.parse(jsonText);
@@ -157,7 +157,6 @@ module.exports = async (req, res) => {
             date: dateString
         };
 
-        // 캐싱 설정 (내일 0시까지)
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(0, 0, 0, 0);
@@ -175,7 +174,6 @@ module.exports = async (req, res) => {
     }
 };
 
-// API 호출 헬퍼 함수
 function callGeminiAPI(modelName, apiKey, apiData) {
     return new Promise((resolve, reject) => {
         const options = {
@@ -186,7 +184,7 @@ function callGeminiAPI(modelName, apiKey, apiData) {
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(apiData)
             },
-            timeout: 20000 // 20초 (너무 오래 걸리면 다음 모델로 넘기기 위해 약간 줄임)
+            timeout: 20000 
         };
 
         const apiReq = https.request(options, (apiRes) => {
@@ -200,7 +198,6 @@ function callGeminiAPI(modelName, apiKey, apiData) {
                         reject(new Error(`JSON 파싱 실패: ${e.message}`));
                     }
                 } else {
-                    // 429(Too Many Requests), 503(Overloaded) 등 에러 리턴
                     reject(new Error(`API 상태 코드 ${apiRes.statusCode}: ${data}`));
                 }
             });
